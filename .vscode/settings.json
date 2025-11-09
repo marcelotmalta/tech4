@@ -1,0 +1,12 @@
+{
+    // Use the project's virtual environment Python interpreter
+    "python.defaultInterpreterPath": "D:/Tech/tech4-1/.venv/Scripts/python.exe",
+
+    // Help the language server find site-packages if needed (optional)
+    "python.analysis.extraPaths": [
+        "D:/Tech/tech4-1/.venv/Lib/site-packages"
+    ],
+
+    // Optional: reduce noise from imports that can't be resolved temporarily
+    "python.analysis.diagnosticMode": "workspace"
+}
