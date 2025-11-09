@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  api:
+    build: .                      # constrói a imagem a partir do Dockerfile na raiz
+    image: tech4-fase4-api:latest # (opcional) nome/tag da imagem
+    container_name: tech4-fase4-api
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      # chave externa (nunca fixe no Dockerfile)
+      ALPHAVANTAGE_API_KEY: "${ALPHAVANTAGE_API_KEY}"
+      # artefatos do modelo
+      MODEL_PATH: "${MODEL_PATH:-models/lstm_generic.keras}"
+      SCALER_PATH: "${SCALER_PATH:-artifacts/scaler_generic.joblib}"
+      LOOKBACK: "${LOOKBACK:-60}"
+      DATA_DIR: "${DATA_DIR:-/app/data}"
+    volumes:
+      # mapeia a pasta local 'data' para dentro do container (/app/data)
+      - ./data:/app/data
+    restart: unless-stopped
+    # (opcional – requer curl na imagem; veja comentário no Dockerfile)
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    #   interval: 30s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 20s
