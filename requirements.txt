@@ -1,0 +1,23 @@
+# Requisitos estáveis para Windows + Python 3.10 (CPU)
+# 1) Use Python 3.10 (TensorFlow 2.10.x é o último com wheel oficial para Win nativa)
+# 2) NÃO instale o pacote 'keras' separado (usaremos tf.keras)
+# 3) Numpy 1.26.x e h5py compatíveis com TF 2.10.x
+
+# Núcleo científico
+numpy==1.26.4
+pandas==2.0.3
+scikit-learn==1.3.2
+matplotlib==3.7.3
+yfinance==0.2.40
+jupyter==1.0.0
+
+# API
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
+pydantic==2.6.4
+joblib==1.3.2
+
+# TensorFlow CPU (Windows)
+# Observação: compatível com Python 3.10 e CPU.
+tensorflow==2.10.1
+h5py==3.8.0
