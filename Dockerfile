@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt requirements-cpu.txt* /tmp/
 
 # Escolha do arquivo de dependências via ARG (padrão: requirements-cpu.txt)
-ARG REQS=requirements.txt
+ARG REQS=requirements-cpu.txt
 RUN if [ -f "/tmp/${REQS}" ]; then \
         echo "Instalando deps de ${REQS}" && pip install -r "/tmp/${REQS}"; \
     else \
