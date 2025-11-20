@@ -2,6 +2,12 @@
 
 Este repositório contém a solução para a Fase 4 do Tech Challenge, focada na criação de uma API para previsão de preços de ações utilizando um modelo **LSTM Multivariado**.
 
+## 🌐 Acesso Online
+
+A API está deployada e acessível publicamente no Render. Você pode testar os endpoints diretamente pela documentação interativa (Swagger UI):
+
+👉 **[https://tech4.onrender.com/docs](https://tech4.onrender.com/docs)**
+
 ## 🧠 O Modelo Final
 
 O modelo desenvolvido é uma **LSTM (Long Short-Term Memory)** que utiliza três variáveis para prever o preço de fechamento (`Close`) do dia seguinte:
