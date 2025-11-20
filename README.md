@@ -1,94 +1,170 @@
 # Tech Challenge – Fase 4 (LSTM + API)
 
-Este repositório contém um **notebook** e um **stub de API** para previsão de fechamento de ações usando **LSTM**.
-O fluxo está organizado em **fases** e segue os entregáveis solicitados no desafio.
+Este repositório contém a solução para a Fase 4 do Tech Challenge, focada na criação de uma API para previsão de preços de ações utilizando um modelo **LSTM Multivariado**.
 
-## Estrutura
+## 🧠 O Modelo Final
+
+O modelo desenvolvido é uma **LSTM (Long Short-Term Memory)** que utiliza três variáveis para prever o preço de fechamento (`Close`) do dia seguinte:
+
+1.  **Close**: Preço de fechamento.
+2.  **Volume**: Volume de negociações (aplicado logaritmo `np.log1p`).
+3.  **RSI (Relative Strength Index)**: Índice de Força Relativa (calculado com janela de 14 dias).
+
+O modelo foi treinado para aceitar sequências de **60 dias** (lookback) e prever 1 passo à frente.
+
+## 🧪 Processo de Treinamento
+
+O modelo foi treinado seguindo um pipeline rigoroso (detalhado no notebook `pipelinegerenrico_rsi.ipynb`):
+
+1.  **Coleta de Dados**:
+    -   **Fonte**: Alpha Vantage (com fallback para CSV local).
+    -   **Tickers**: Diversos setores e mercados para generalização (`AAPL`, `MSFT`, `AMZN`, `PETR4.SA`, `VALE3.SA`, `ITUB4.SA`).
+    -   **Período**: De 2018-01-01 até o presente.
+
+2.  **Engenharia de Features**:
+    -   **RSI**: Índice de Força Relativa calculado com janela de 14 dias.
+    -   **Log Volume**: Aplicação de `log1p` no volume para reduzir a variância e tratar outliers.
+
+3.  **Pré-processamento**:
+    -   **Scaling**: `MinMaxScaler` aplicado individualmente por ticker para cada feature (Close, Vol, RSI).
+    -   **Janelamento**: Sequências de 60 dias (Lookback) para prever o próximo dia.
+    -   **Split**: Divisão temporal respeitando a ordem cronológica (Treino / Validação / Teste).
+
+4.  **Arquitetura da Rede Neural**:
+    -   `LSTM` (96 unidades)
+    -   `LayerNormalization`
+    -   `Dropout`
+    -   `LSTM` (64 unidades)
+    -   `Dense` (1 unidade - Saída linear)
+
+5.  **Treinamento**:
+    -   **Loss**: Mean Squared Error (MSE).
+    -   **Otimizador**: Adam.
+    -   **Monitoramento**: Callbacks para Early Stopping e redução de Learning Rate.
+
+## ⚙️ Configuração
+
+Para rodar o projeto, você precisa definir as variáveis de ambiente. Crie um arquivo `.env` na raiz do projeto (baseado no `.env.example`) com o seguinte conteúdo:
+
+```ini
+# Chave da API Alpha Vantage (Obrigatória para novos tickers)
+ALPHAVANTAGE_API_KEY=sua_chave_aqui
+
+# Configurações do Modelo (Opcionais - valores padrão abaixo)
+MODEL_PATH=models/lstm_generic.keras
+SCALER_PATH=artifacts/scalers_dict.joblib
+LOOKBACK=60
+DATA_DIR=data
+```
+
+> [!IMPORTANT]
+> **Limite da API Alpha Vantage**: A chave gratuita possui um limite de **25 requisições por dia**. Se o limite for atingido, a API retornará erro ao tentar buscar dados de novos tickers. O sistema faz cache dos dados em CSV na pasta `data/` para economizar requisições.
+
+## 📡 Endpoints Disponíveis
+
+A API oferece os seguintes endpoints para consulta:
+
+### 1. Previsão por Ticker (`POST /predict_ticker`)
+Realiza a previsão para um ticker específico (ex: PETR4.SA), baixando dados automaticamente da Alpha Vantage.
+
+**Corpo da Requisição (JSON):**
+```json
+{
+  "symbol": "PETR4.SA"
+}
+```
+
+**Resposta:**
+```json
+{
+  "symbol": "PETR4.SA",
+  "last_date_in_history": "2023-10-27 00:00:00",
+  "prediction_next_day": 34.50
+}
+```
+
+### 2. Previsão Manual (`POST /predict`)
+Realiza a previsão com base em dados fornecidos manualmente (lista de preços e volumes). Útil para testar cenários ou usar dados de outras fontes.
+
+**Corpo da Requisição (JSON):**
+```json
+{
+  "close_prices": [10.0, 10.2, ...],  // Mínimo 80 pontos
+  "volumes": [1000, 1200, ...],       // Mesmo tamanho de close_prices
+  "lookback": 60                      // (Opcional) Janela de tempo
+}
+```
+
+### 3. Health Check (`GET /health`)
+Verifica se a API está online e se o modelo foi carregado com sucesso.
+
+**Resposta:**
+```json
+{
+  "status": "ok",
+  "model_loaded": true
+}
+```
+
+
+## 🚀 Como Rodar
+
+### Localmente (Python)
+
+1.  Crie e ative o ambiente virtual:
+    ```bash
+    python -m venv .venv
+    # Windows
+    .\.venv\Scripts\activate
+    # Linux/Mac
+    source .venv/bin/activate
+    ```
+
+2.  Instale as dependências:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  Execute a API:
+    ```bash
+    uvicorn api.app_fastapi:app --host 0.0.0.0 --port 8000 --reload
+    ```
+
+4.  Acesse a documentação:
+    - Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Via Docker
+
+1.  Construa a imagem:
+    ```bash
+    docker build -t tech-challenge-fase4 .
+    ```
+
+2.  Rode o container (passando a chave de API):
+    ```bash
+    docker run -p 8000:8000 -e ALPHAVANTAGE_API_KEY=sua_chave_aqui tech-challenge-fase4
+    ```
+
+## ☁️ Deploy no Render
+
+Este projeto está configurado para deploy fácil no [Render](https://render.com/).
+
+1.  Crie um novo **Web Service** no Render conectado ao seu repositório GitHub.
+2.  Selecione o ambiente **Docker**.
+3.  Adicione a variável de ambiente `ALPHAVANTAGE_API_KEY` nas configurações do serviço.
+4.  (Opcional) Se quiser persistência do cache de dados, adicione um disco persistente montado em `/app/data`.
+
+## 📂 Estrutura do Projeto
+
 ```
 tech_challenge_fase4/
-├─ notebook/
-│  └─ 01_lstm_pipeline.ipynb
 ├─ api/
-│  └─ app_fastapi.py
-├─ data/
-│  └─ sample.csv            # (opcional) cole aqui seus dados históricos se não usar yfinance
-├─ Dockerfile
-├─ requirements.txt
-└─ README.md
+│  └─ app_fastapi.py    # Código da API (FastAPI)
+├─ artifacts/           # Scalers salvos (.joblib)
+├─ data/                # Cache de dados (.csv)
+├─ models/              # Modelo treinado (.keras)
+├─ notebook/            # Notebooks de treino e análise
+├─ Dockerfile           # Configuração Docker
+├─ requirements.txt     # Dependências
+└─ README.md            # Documentação
 ```
-
-## Como usar
-
-### Ambiente local
-1. Crie um virtualenv e instale as dependências:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # Windows: .venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-2. Abra o notebook:
-   ```bash
-   jupyter lab  # ou jupyter notebook
-   ```
-3. Execute as **Fases 1–5** no notebook para treinar e salvar o modelo (`models/` e `artifacts/`).
-
-### API (FastAPI)
-1. Execute localmente (após salvar o modelo):
-   ```bash
-   uvicorn api.app_fastapi:app --host 0.0.0.0 --port 8000 --reload
-   ```
-2. Documentação interativa:
-   - Swagger UI: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
-
-### Docker
-```bash
-docker build -t tech-challenge-fase4 .
-docker run -p 8000:8000 -v $(pwd)/models:/app/models -v $(pwd)/artifacts:/app/artifacts tech-challenge-fase4
-```
-
-## Observações
-- Em ambientes **sem internet**, utilize um CSV em `data/sample.csv`. O notebook detecta e usa automaticamente.
-- Em ambientes **com internet**, o notebook pode baixar dados via `yfinance` (basta definir `USE_YFINANCE=True`).
-- Métricas: MAE, RMSE, MAPE.
-- O app de API está pronto para **carregar o modelo salvo** e aceitar janelas de dados para previsão.
-
-**Última atualização:** 2025-11-09
-
-
----
-
-## Notas para Windows (erros de instalação / MemoryError)
-
-Se estiver em **Windows nativo**, recomenda-se **Python 3.10** e usar o arquivo `requirements-windows.txt`:
-
-```powershell
-# Verifique versão do Python:
-py --version
-
-# Crie o venv com Python 3.10
-py -3.10 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip setuptools wheel
-
-# Instale em etapas para reduzir uso de memória
-pip install --no-cache-dir -r requirements-windows.txt
-```
-
-**Dicas para evitar `MemoryError` durante `pip install`:**
-1. Feche IDEs e apps pesados (navegador com muitas abas, etc.).  
-2. Aumente o arquivo de paginação (memória virtual) do Windows.  
-3. Instale em **duas etapas**:
-   - Primeiro stack científico + notebook:
-     ```powershell
-     pip install --no-cache-dir numpy==1.26.4 pandas==2.0.3 scikit-learn==1.3.2 matplotlib==3.7.3 yfinance==0.2.40 jupyter==1.0.0
-     ```
-   - Depois TensorFlow CPU:
-     ```powershell
-     pip install --no-cache-dir tensorflow==2.10.1 h5py==3.8.0
-     ```
-4. Evite instalar o pacote `keras` separado (use `tf.keras`).  
-5. Se persistir, considere usar **WSL2 (Ubuntu)** ou **Conda**:
-   - **WSL2**: Python 3.10 + `pip install tensorflow==2.13.*` (CPU) costumam funcionar melhor.
-   - **Conda**: `conda create -n tc4 python=3.10 tensorflow==2.10.1`.
-
