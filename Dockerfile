@@ -6,8 +6,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
 
 # Instala somente as deps da API
-COPY requirements-api.txt /tmp/requirements-api.txt
-RUN pip install --no-cache-dir -r /tmp/requirements-api.txt
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Código
 COPY . .
