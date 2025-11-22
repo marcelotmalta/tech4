@@ -69,7 +69,12 @@ def get_scalers_dict():
     global _scalers_dict
     if _scalers_dict is None:
         if os.path.exists(SCALERS_DICT_PATH):
-            _scalers_dict = joblib.load(SCALERS_DICT_PATH)
+            loaded = joblib.load(SCALERS_DICT_PATH)
+            if isinstance(loaded, dict):
+                _scalers_dict = loaded
+            else:
+                print(f"[warn] Arquivo {SCALERS_DICT_PATH} não contém um dicionário (tipo encontrado: {type(loaded)}). Iniciando vazio.")
+                _scalers_dict = {}
         else:
             print(f"[warn] Dicionário de scalers não encontrado em {SCALERS_DICT_PATH}. Iniciando vazio.")
             _scalers_dict = {}
