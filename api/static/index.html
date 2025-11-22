@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tech Challenge | Stock Predictor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Previsor de <span class="gradient-text">Ações</span></h1>
+            <p>Previsão de Mercado Baseada em IA</p>
+        </header>
+
+        <main>
+            <div class="search-box">
+                <input type="text" id="tickerInput" placeholder="Enter Ticker (e.g., PETR4.SA)" value="PETR4.SA">
+                <button id="predictBtn">
+                    <span>Predict</span>
+                </button>
+            </div>
+
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+                <p>Analyzing market data...</p>
+            </div>
+
+            <div id="result" class="hidden">
+                <div class="cards-grid">
+                    <div class="card">
+                        <h3>Last Close</h3>
+                        <div class="value" id="lastPrice">--</div>
+                        <div class="date" id="lastDate">--</div>
+                    </div>
+                    <div class="card highlight">
+                        <h3>Prediction (Next Day)</h3>
+                        <div class="value" id="predictedPrice">--</div>
+                        <div class="margin" id="errorMargin">± --</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+
+            <div id="error" class="hidden">
+                <p id="errorMessage"></p>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

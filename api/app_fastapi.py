@@ -29,6 +29,8 @@ app = FastAPI(
     description="API de previsão para séries de preços com modelo LSTM genérico (Close, Vol, RSI)."
 )
 
+from fastapi.staticfiles import StaticFiles
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,6 +38,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files
+app.mount("/app", StaticFiles(directory="api/static", html=True), name="static")
 
 # --- Modelos Pydantic ---
 class PredictRequest(BaseModel):
@@ -216,10 +221,19 @@ def predict_ticker(req: TickerRequest):
         
         last_date = df['Date'].iloc[-1] if 'Date' in df.columns else "N/A"
         
+        # Calculate error margin (Volatility-based: 1.96 * std(returns) * price)
+        # Using last 30 days for volatility
+        returns = df['Close'].pct_change().dropna()
+        volatility = returns.tail(30).std() if len(returns) > 1 else 0.02 # Fallback 2%
+        error_margin = float(pred_real * volatility * 1.96)
+
         return {
             "symbol": symbol,
             "last_date_in_history": str(last_date),
-            "prediction_next_day": pred_real
+            "prediction_next_day": pred_real,
+            "error_margin": error_margin,
+            "history_dates": df['Date'].dt.strftime('%Y-%m-%d').tolist(),
+            "history_prices": df['Close'].tolist()
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Erro na inferência: {e}"})
