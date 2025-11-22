@@ -243,7 +243,7 @@ def _get_data_for_ticker(symbol: str, start_date: str, use_cache: bool) -> pd.Da
         
     from alpha_vantage.timeseries import TimeSeries
     ts = TimeSeries(key=api_key, output_format="pandas")
-    data, _ = ts.get_daily(symbol=symbol, outputsize="full")
+    data, _ = ts.get_daily(symbol=symbol, outputsize="compact")
     
     data = data.rename(columns={
         "1. open": "Open", "2. high": "High", "3. low": "Low",
