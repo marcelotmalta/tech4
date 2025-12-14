@@ -8,9 +8,12 @@ from typing import List, Optional, Dict, Any
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
+from prometheus_fastapi_instrumentator import Instrumentator
+from evidently import Report
+from evidently.presets import DataDriftPreset
 
 import joblib
 from tensorflow.keras.models import load_model
@@ -41,6 +44,9 @@ app.add_middleware(
 
 # Mount static files
 app.mount("/app", StaticFiles(directory="api/static", html=True), name="static")
+
+# --- Monitoring ---
+Instrumentator().instrument(app).expose(app)
 
 # --- Modelos Pydantic ---
 class PredictRequest(BaseModel):
@@ -235,6 +241,49 @@ def predict_ticker(req: TickerRequest):
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Erro na inferência: {e}"})
+
+@app.get("/monitoring/drift", response_class=HTMLResponse)
+def monitoring_drift(symbol: str = "PETR4.SA"):
+    """
+    Gera um relatório HTML de Data Drift usando Evidently.
+    Usa dados históricos recentes:
+    - Reference: dados mais antigos do fetch (ex: iniciais)
+    - Current: dados mais recentes (ex: últimos 30 dias)
+    """
+    try:
+        # 1. Busca dados (cache ou API)
+        df = _get_data_for_ticker(symbol, use_cache=True)
+        
+        if len(df) < 60:
+             return f"<h1>Erro</h1><p>Dados insuficientes ({len(df)} linhas) para gerar relatório de drift.</p>"
+        
+        # 2. Split Reference vs Current
+        # Vamos assumir os últimos 30 dias como 'Current' e o resto como 'Reference'
+        # Se 30 dias for muito pouco em relação ao total, ajustamos.
+        
+        split_index = len(df) - 30
+        if split_index < 30: # Garante pelo menos 30 pontos de referencia
+             split_index = len(df) // 2
+             
+        reference = df.iloc[:split_index]
+        current = df.iloc[split_index:]
+        
+        # 3. Gera Relatório
+        report = Report(metrics=[
+            DataDriftPreset(), 
+        ])
+        
+        report.run(reference_data=reference, current_data=current)
+        
+        return report.get_html()
+        
+    except Exception as e:
+        return f"<h1>Erro ao gerar relatório</h1><p>{str(e)}</p>"
+
+@app.get("/monitoring/dashboard", response_class=HTMLResponse)
+def monitoring_dashboard():
+    with open("api/static/dashboard.html", "r", encoding="utf-8") as f:
+        return f.read()
 
 # --- Helpers de Dados ---
 def _get_data_for_ticker(symbol: str, use_cache: bool) -> pd.DataFrame:

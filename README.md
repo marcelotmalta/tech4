@@ -113,6 +113,20 @@ Verifica se a API está online e se o modelo foi carregado com sucesso.
 ```
 
 
+### 4. Monitoramento (`/monitoring/*`)
+Novas funcionalidades para observabilidade do sistema e do modelo.
+
+#### A. Dashboard Interno (`GET /monitoring/dashboard`)
+Dashboard interativo em HTML para visualização rápida de métricas sem necessidade de ferramentas externas. Mostra requisições/segundo, latência e taxa de erros.
+
+#### B. Métricas Prometheus (`GET /metrics`)
+Endpoint padrão para scraping de métricas (Prometheus/Grafana). Compatível com **Grafana Cloud**.
+
+#### C. Data Drift (`GET /monitoring/drift`)
+Relatório gerado pelo **Evidently AI** detectando mudanças no padrão dos dados (Drift). Compara os últimos 30 pontos de dados com o histórico anterior.
+- **Parâmetro**: `?symbol=PETR4.SA` (Opcional, default: PETR4.SA)
+
+
 ## 🚀 Como Rodar
 
 ### Localmente (Python)
