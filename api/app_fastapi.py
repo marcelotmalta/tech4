@@ -195,11 +195,9 @@ def predict(req: PredictRequest):
 def predict_ticker(req: TickerRequest):
     symbol = req.symbol.strip()
     lb = LOOKBACK_DEFAULT
-    start_date = "2018-01-01"
-    use_cache = True
-    # 1. Busca Dados
+    # 1. Busca Dados (sempre tenta Alpha Vantage primeiro para dados recentes)
     try:
-        df = _get_data_for_ticker(symbol, start_date, use_cache)
+        df = _get_data_for_ticker(symbol, use_cache=True)
     except Exception as e:
          return JSONResponse(status_code=502, content={"error": f"Erro ao obter dados: {e}"})
          
@@ -239,39 +237,45 @@ def predict_ticker(req: TickerRequest):
         return JSONResponse(status_code=500, content={"error": f"Erro na inferência: {e}"})
 
 # --- Helpers de Dados ---
-def _get_data_for_ticker(symbol: str, start_date: str, use_cache: bool) -> pd.DataFrame:
-    # Tenta cache CSV
+def _get_data_for_ticker(symbol: str, use_cache: bool) -> pd.DataFrame:
     cache_path = os.path.join(DATA_DIR, f"{symbol}.csv")
+    
+    # Prioriza buscar dados recentes do Alpha Vantage (sempre tenta primeiro para garantir atualização)
+    api_key = os.getenv("ALPHAVANTAGE_API_KEY")
+    if api_key:
+        try:
+            from alpha_vantage.timeseries import TimeSeries
+            ts = TimeSeries(key=api_key, output_format="pandas")
+            data, _ = ts.get_daily(symbol=symbol, outputsize="compact")  # Últimos ~100 dias (dados recentes)
+            
+            data = data.rename(columns={
+                "1. open": "Open", "2. high": "High", "3. low": "Low",
+                "4. close": "Close", "5. volume": "Volume"
+            }).reset_index().rename(columns={"date": "Date"})
+            
+            # Não filtra por start_date, pois compact já traz recentes
+            data = data.sort_values("Date").reset_index(drop=True)
+            
+            # Salva no cache para próximas chamadas
+            if use_cache:
+                os.makedirs(DATA_DIR, exist_ok=True)
+                data.to_csv(cache_path, index=False)
+                print(f"[alpha] Dados atualizados para {symbol} (salvo em cache)")
+            
+            return data
+        except Exception as e:
+            print(f"[alpha] Falhou para {symbol}: {e}. Tentando cache...")
+    
+    # Fallback: usa cache se disponível
     if use_cache and os.path.exists(cache_path):
         try:
             df = pd.read_csv(cache_path, parse_dates=["Date"]).sort_values("Date").reset_index(drop=True)
-            # print(f"[cache] Usando CSV local para {symbol}")
+            print(f"[cache] Usando dados locais para {symbol}")
             return df
-        except:
-            pass
-            
-    # Tenta Alpha Vantage
-    api_key = os.getenv("ALPHAVANTAGE_API_KEY")
-    if not api_key:
-        raise RuntimeError("ALPHAVANTAGE_API_KEY não definida.")
-        
-    from alpha_vantage.timeseries import TimeSeries
-    ts = TimeSeries(key=api_key, output_format="pandas")
-    data, _ = ts.get_daily(symbol=symbol, outputsize="compact")
+        except Exception as e:
+            raise RuntimeError(f"Cache corrompido para {symbol}: {e}")
     
-    data = data.rename(columns={
-        "1. open": "Open", "2. high": "High", "3. low": "Low",
-        "4. close": "Close", "5. volume": "Volume"
-    }).reset_index().rename(columns={"date": "Date"})
-    
-    data = data[data["Date"] >= pd.to_datetime(start_date)]
-    data = data.sort_values("Date").reset_index(drop=True)
-    
-    if use_cache:
-        os.makedirs(DATA_DIR, exist_ok=True)
-        data.to_csv(cache_path, index=False)
-        
-    return data
+    raise RuntimeError(f"Não foi possível obter dados para {symbol} (Alpha Vantage indisponível e sem cache).")
 
 # Init Check
 try:
